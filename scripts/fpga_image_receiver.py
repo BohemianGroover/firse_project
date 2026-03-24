@@ -220,7 +220,6 @@ def read_metadata(ser, metadata_wait=90, raw_log_handle=None):
         width_match = re.search(r"WIDTH\s*:\s*(\d+)", line)
         if width_match:
             width = int(width_match.group(1))
-            continue
 
         height_match = re.search(r"HEIGHT\s*:\s*(\d+)", line)
         if height_match:
@@ -242,49 +241,37 @@ def read_pixels(ser, width, height, raw_log_handle=None):
     image_data = []
     expected_pixels = width * height
     pixels_received = 0
+    next_progress_pct = 10
+    invalid_lines = 0
     
     start_time = time.time()
     
     try:
-        for pixel_index in range(expected_pixels):
-            # Read pixel line
+        while pixels_received < expected_pixels:
+            # Read one UART line and attempt to parse a pixel.
             pixel_line = ser.readline().decode('utf-8', errors='ignore').strip()
             if raw_log_handle is not None:
                 raw_log_handle.write(pixel_line + "\n")
             
             if not pixel_line:
-                print(f"    Timeout or empty line at pixel {pixel_index + 1}/{expected_pixels}")
+                print(f"    Timeout or empty line at pixel {pixels_received + 1}/{expected_pixels}")
                 break
-            
-            # Parse "R:###,G:###,B:###"
-            try:
-                parts = pixel_line.split(',')
-                if len(parts) < 3:
-                    print(f"    WARNING: Invalid pixel format at {pixel_index + 1}: {pixel_line}")
-                    continue
-                
-                r = int(parts[0].split(':')[1])
-                g = int(parts[1].split(':')[1])
-                b = int(parts[2].split(':')[1])
-                
-                # Clamp to valid range
-                r = max(0, min(255, r))
-                g = max(0, min(255, g))
-                b = max(0, min(255, b))
-                
-                image_data.append((r, g, b))
-                pixels_received += 1
-                
-                # Progress indicator
-                if (pixel_index + 1) % (expected_pixels // 10 + 1) == 0:
-                    elapsed = time.time() - start_time
-                    percent = ((pixel_index + 1) / expected_pixels) * 100
-                    print(f"    {percent:5.1f}% - {pixels_received} pixels received in {elapsed:.1f}s")
-            
-            except (ValueError, IndexError) as e:
-                print(f"    WARNING: Could not parse pixel {pixel_index + 1}: {pixel_line}")
-                print(f"    Error: {e}")
+
+            pixel = parse_pixel_line(pixel_line)
+            if pixel is None:
+                invalid_lines += 1
+                if invalid_lines <= 3 or (invalid_lines % 100 == 0):
+                    print(f"    Ignoring non-pixel UART line: {pixel_line}")
                 continue
+
+            image_data.append(pixel)
+            pixels_received += 1
+
+            percent = int((pixels_received * 100) / expected_pixels)
+            while next_progress_pct <= 100 and percent >= next_progress_pct:
+                elapsed = time.time() - start_time
+                print(f"    {next_progress_pct:3d}% - {pixels_received}/{expected_pixels} pixels in {elapsed:.1f}s")
+                next_progress_pct += 10
     
     except KeyboardInterrupt:
         print("\n[!] Interrupted by user")
