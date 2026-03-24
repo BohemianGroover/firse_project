@@ -20,10 +20,11 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module Modules( clk, reset, sel_module,red, green, blue, // input signlas
+module Modules( clk, reset, sel_module,        // input signlas
                      done_in, done_out,       // output signals for tgb2gray
-                     val,                           // brightness values
-                     red_o, green_o, blue_o);          //output signals for brightness
+                     val,                     // brightness values
+                     red, green, blue,        // pixel input signals
+                     red_o, green_o, blue_o); // output signals for brightness
 
 //sel_module = 01 (increase brightness)
 //sel_module = 10 (decrease brightness)
@@ -32,7 +33,7 @@ module Modules( clk, reset, sel_module,red, green, blue, // input signlas
  input clk, reset, done_in;
  input [2:0] sel_module;
  input[7:0] val = 0;
- input[7:0] red, green, blue;
+ input [7:0] red, green, blue;
  output reg done_out;
  output reg[7:0] red_o, green_o, blue_o;
  reg[8:0] red_x, green_x, blue_x;

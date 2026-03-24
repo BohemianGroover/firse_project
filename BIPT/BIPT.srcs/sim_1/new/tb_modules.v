@@ -181,7 +181,7 @@ module tb_modules();
         $display("DONE: result_111_original.bmp");
 
         $display("\nAll 8 images written to C:\\Users\\yawal\\Desktop\\");
-        $stop;
+        $finish;
     end
 
 endmodule
