@@ -85,16 +85,26 @@ module UARTTransmitter (
                     end
                 end
             end else begin
-                if ((state == ST_WAIT_PIXEL) && pixel_valid && !pixel_latched) begin
-                    red_l <= red;
-                    green_l <= green;
-                    blue_l <= blue;
-                    pixel_latched <= 1'b1;
-                    char_index <= 6'd0;
-                    if (!metadata_sent) begin
+                if (state == ST_WAIT_PIXEL) begin
+                    if (pixel_valid && !pixel_latched) begin
+                        red_l <= red;
+                        green_l <= green;
+                        blue_l <= blue;
+                        pixel_latched <= 1'b1;
+                        char_index <= 6'd0;
+                        if (!metadata_sent) begin
+                            state <= ST_SEND_WIDTH;
+                        end else begin
+                            state <= ST_SEND_PIXEL;
+                        end
+                    end else if (image_done && !metadata_sent) begin
+                        // Ensure metadata is emitted even if no pixels were produced.
+                        red_l <= 8'd0;
+                        green_l <= 8'd0;
+                        blue_l <= 8'd0;
+                        pixel_latched <= 1'b0;
+                        char_index <= 6'd0;
                         state <= ST_SEND_WIDTH;
-                    end else begin
-                        state <= ST_SEND_PIXEL;
                     end
                 end else begin
                     case (state)

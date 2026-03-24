@@ -71,6 +71,18 @@ def parse_args():
         default=None,
         help="Reconstruct image from a previously captured UART log file"
     )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=None,
+        help="Manual image width (used when metadata is missing in --from-log mode)"
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=None,
+        help="Manual image height (used when metadata is missing in --from-log mode)"
+    )
     return parser.parse_args()
 
 
@@ -119,7 +131,7 @@ def parse_pixel_line(line):
     return (r, g, b)
 
 
-def reconstruct_from_log(log_path):
+def reconstruct_from_log(log_path, forced_width=None, forced_height=None):
     """Parse a UART text log and reconstruct image data offline."""
     path = Path(log_path)
     if not path.exists():
@@ -151,8 +163,14 @@ def reconstruct_from_log(log_path):
                 break
 
     if width is None or height is None:
-        print("[!] Could not find WIDTH/HEIGHT in log file")
-        return None, None, None
+        if forced_width is not None and forced_height is not None:
+            width = forced_width
+            height = forced_height
+            print("[*] WIDTH/HEIGHT metadata missing in log; using manual dimensions")
+        else:
+            print("[!] Could not find WIDTH/HEIGHT in log file")
+            print("[!] Provide --width and --height for offline reconstruction")
+            return None, None, None
 
     expected_pixels = width * height
     image_data = []
@@ -305,7 +323,11 @@ def main():
     
     # Offline mode: rebuild from previously captured log file.
     if args.from_log is not None:
-        width, height, image_data = reconstruct_from_log(args.from_log)
+        width, height, image_data = reconstruct_from_log(
+            args.from_log,
+            args.width,
+            args.height,
+        )
         if width is None or height is None or not image_data:
             sys.exit(1)
 
